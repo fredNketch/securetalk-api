@@ -1,0 +1,290 @@
+# Configuration principale de SecureTalk API
+spring:
+  application:
+    name: securetalk-api
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # Configuration JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        connection:
+          provider_disables_autocommit: true
+    open-in-view: false
+
+  # Configuration Jackson pour JSON
+  jackson:
+    time-zone: UTC
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
+    default-property-inclusion: NON_NULL
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+  # Configuration des threads
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 100
+      thread-name-prefix: securetalk-executor-
+
+# Configuration JWT
+jwt:
+  secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgc2VjdXJlIGFuZCBsb25nIHNlY3JldCBrZXkgZm9yIEpXVCB0b2tlbnMgU2VjdXJlVGFsayAyMDI0}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 heures en millisecondes
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 jours
+
+# Configuration du chiffrement
+encryption:
+  secret-key: ${ENCRYPTION_KEY:YWVzLTI1Ni1rZXktZm9yLW1lc3NhZ2UtZW5jcnlwdGlvbi1zZWN1cmV0YWxrLWFwcGxpY2F0aW9uLTIwMjQ=}
+
+# Configuration du serveur
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+# Configuration des logs
+logging:
+  level:
+    com.securetalk: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/securetalk.log
+    max-size: 10MB
+    max-history: 30
+
+# Configuration Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active}
+
+# Configuration de l'application
+app:
+  name: SecureTalk
+  version: '@project.version@'
+  description: "API REST sécurisée pour la messagerie SecureTalk"
+  contact:
+    name: "Équipe SecureTalk"
+    email: "dev@securetalk.com"
+  security:
+    max-login-attempts: 5
+    account-lockout-duration: 900 # 15 minutes en secondes
+    password-reset-token-expiration: 3600 # 1 heure en secondes
+  messaging:
+    max-message-length: 1000
+    max-attachments-per-message: 5
+    max-attachment-size: 10485760 # 10MB en octets
+
+---
+# Profil de développement
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  # Base de données de développement
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/securetalk_dev?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:securetalk_user}
+    password: ${DB_PASSWORD:securetalk_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: SecureTalkCP
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  # JPA en développement
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+# CORS permissif en développement
+cors:
+  allowed-origins:
+    - http://localhost:4200
+    - http://localhost:3000
+  allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
+
+# SSL désactivé en développement
+server:
+  port: 8080
+  ssl:
+    enabled: false
+
+# Logs plus détaillés en développement
+logging:
+  level:
+    com.securetalk: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+---
+# Profil de production
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  # Base de données de production
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://mysql:3306/securetalk?useSSL=true&serverTimezone=UTC}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: SecureTalkCP-Prod
+      maximum-pool-size: 20
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  # JPA en production
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+# CORS restrictif en production
+cors:
+  allowed-origins:
+    - https://securetalk.com
+    - https://www.securetalk.com
+    - https://app.securetalk.com
+  allowed-methods: GET,POST,PUT,PATCH,DELETE
+  allowed-headers: Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,Keep-Alive,X-Requested-With,If-Modified-Since
+  allow-credentials: true
+  max-age: 86400
+
+# SSL obligatoire en production
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    key-store: ${SSL_KEYSTORE_PATH:classpath:keystore.p12}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:securetalk}
+    key-store-type: PKCS12
+    key-alias: securetalk
+    protocol: TLS
+    enabled-protocols: TLSv1.2,TLSv1.3
+
+# Logs optimisés pour la production
+logging:
+  level:
+    com.securetalk: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    root: ERROR
+  file:
+    name: /app/logs/securetalk.log
+
+---
+# Profil de test
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  # Base de données en mémoire pour les tests
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  # JPA pour les tests
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  # H2 Console pour debug
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Configuration de test
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1qdGtyLXRva2Vucy1pbi10ZXN0LWVudmlyb25tZW50
+  expiration: 3600000 # 1 heure pour les tests
+
+encryption:
+  secret-key: dGVzdC1hZXMtMjU2LWtleS1mb3ItbWVzc2FnZS1lbmNyeXB0aW9uLWluLXRlc3Rz
+
+# Logs silencieux pour les tests
+logging:
+  level:
+    com.securetalk: ERROR
+    org.springframework: ERROR
+    org.hibernate: ERROR
+    root: ERROR
